@@ -5,8 +5,8 @@
 //! Ergonomics are subpar and it doesn't play very well with collections as data, if the entries are to be restricted. There are either a lot duplicated functions or very inefficient writing.
 //!
 //! ```
-//! extern crate restricted;
-//! use restricted::RestrictedDyn;
+//! extern crate restricted_types;
+//! use restricted_types::RestrictedDyn;
 //!
 //! fn main() {
 //!     let mut num = RestrictedDyn::new(
@@ -17,6 +17,10 @@
 //!     assert_eq!(22, *num);
 //!     num = num.add(37);
 //!     assert_eq!(39, *num);
+//!
+//!     // also with deref coercion
+//!     let r: &u32 = &num;
+//!     assert_eq!(&39, r);
 //! }
 //! ```
 mod restricted_trait;

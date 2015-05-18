@@ -5,21 +5,13 @@ use std::convert::{AsRef, Into};
 
 pub struct RestrictedDyn<T> {
     data: T,
-    pub check: Box<Fn(&T) -> bool>,
-    pub sanitizer: Box<Fn(&mut T)>,
+    check: Box<Fn(&T) -> bool>,
+    sanitizer: Box<Fn(&mut T)>,
 }
 
-/* T is not AsRef<T>, therefore not possible
-impl<T,R> AsRef<R> for RestrictedDyn<T>
-    where T: AsRef<R> {
-    fn as_ref(&self) -> &R {
-        self.data.as_ref()
-    }
-}
-*/
-
-impl<T> AsRef<T> for RestrictedDyn<T> {
-    fn as_ref(&self) -> &T {
+impl<T> Deref for RestrictedDyn<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
         &self.data
     }
 }
@@ -62,9 +54,13 @@ impl<T> RestrictedDyn<T> {
         }.make_valid() // <= executes panic, if data is invalid
     }
 
-    // todo: get rid of this
+    // what about into trait?
     pub fn into_inner(self) -> T {
         self.data
+    }
+
+    pub fn into_checks(self) -> (Box<Fn(&T) -> bool>, Box<Fn(&mut T)>) {
+        (self.check, self.sanitizer)
     }
 
     /// Changes the validity check. If the current data is invalid under the
@@ -132,7 +128,7 @@ impl<T> RestrictedDyn<T> {
         self.make_valid()
     }
 
-    // Deref => actual trait
+    // Deref => actual trait (Restricted extends Deref)
 
     /// Returns a mutable reference to the inner value.
     /// Writes may leave the value in an invalid state as no checks can be done
@@ -183,7 +179,7 @@ impl<T> RestrictedDyn<T> {
  *  Implementing std::ops Traits
  */
 
-/* currently (permanently?) not possible to implement unsafely
+/* not possible to implement unsafely
 
 unsafe impl<T> DerefMut for RestrictedDyn<T> {
     fn deref_mut(&mut self) -> &mut T {
@@ -191,14 +187,6 @@ unsafe impl<T> DerefMut for RestrictedDyn<T> {
     }
 }
 */
-
-impl<T> Deref for RestrictedDyn<T> {
-    type Target = T;
-    fn deref(&self) -> &T {
-        &self.data
-    }
-}
-
 
 impl<T, Idx, O> Index<Idx> for RestrictedDyn<T>
     where T: Index<Idx,Output=O>, {
@@ -255,7 +243,7 @@ impl<T,U> Shr<U> for RestrictedDyn<T>
 
 
 /*
- *  Implementing std::cmp Traits
+ *  std::cmp Traits (unsure, whether these should be implemented)
  */
 
 /*
@@ -271,11 +259,7 @@ impl<T> PartialEq<T> for RestrictedDyn<T>
 }
 */
 
-// cannot be implemented
-/*
-impl<T> Eq for RestrictedDyn<T>
-    where T: Eq<T> {}
-*/
+// Eq cannot be implemented
 
 /*
 impl<T> PartialOrd<T> for RestrictedDyn<T>
@@ -286,34 +270,23 @@ impl<T> PartialOrd<T> for RestrictedDyn<T>
 }
 */
 
-/* cannot be implemented
-
-impl<T> Ord<T> for RestrictedDyn<T>
-    where T: Ord<T> {
-    fn cmp(&self, other: &T) -> Ordering {
-        self.data.cmp(other)
-    }
-}
-*/
-
+// Ord cannot be implemented
 
 /*
- *  Implement std::convert Traits
- *  Into
+ *  std::convert Traits
  */
+
+impl<T,R> AsRef<R> for RestrictedDyn<T>
+    where T: AsRef<R> {
+    fn as_ref(&self) -> &R {
+        self.data.as_ref()
+    }
+}
+
 /*
 impl<T,U> Into<U> for RestrictedDyn<T>
     where T: Into<U> {
     fn into(self) -> U {
-        self.data.into()
-    }
-}
-*/
-/*
-impl Into<u32> for RestrictedDyn<u32>
-    //where T: Into<U> {
-{
-    fn into(self) -> u32 {
         self.data.into()
     }
 }

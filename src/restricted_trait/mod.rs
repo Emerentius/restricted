@@ -1,4 +1,6 @@
-pub trait Restricted<T>: AsRef<T> {
+use std::ops::Deref;
+
+pub trait Restricted<T>: Deref<Target=T> {
     fn is_allowed(&self, content: &T) -> bool;
     fn sanitize(&self, content: &mut T);
     unsafe fn set_unchecked(&mut self, content: T);
@@ -18,16 +20,23 @@ pub trait Restricted<T>: AsRef<T> {
 
     /// Check for invalid data, that may have been introduced by unsafe access.
     fn is_valid(&self) -> bool {
-        self.is_allowed(self.as_ref())
+        self.is_allowed(self)
     }
 
     /// Check for invalid data, that may have been introduced by unsafe access.
     fn is_invalid(&self) -> bool {
-        self.is_disallowed(self.as_ref())
+        self.is_disallowed(self)
     }
 
     fn clone_inner(&self) -> T
         where T: Clone {
-        self.as_ref().clone()
+        (&**self).clone()
     }
+
+    // kind of redundant with Deref, delete?
+    // Return a copy of the content. Only applicable for copy types.
+    /*fn get(&self) -> T
+        where T: Copy {
+        **self
+    }*/
 }

@@ -1,7 +1,6 @@
 use restricted_trait::Restricted;
-use std::cmp::*;
 use std::ops::*;
-use std::convert::{AsRef, Into};
+use std::convert::AsRef;
 
 pub struct RestrictedDyn<T> {
     data: T,
@@ -40,7 +39,7 @@ impl<T> RestrictedDyn<T> {
             data: data,
             check: Box::new(check),
             sanitizer: Box::new(sanitizer),
-        }.make_valid()
+        }.into_valid()
     }
 
     /// Creates a new instance of RestrictedDyn, that panics on invalid values.
@@ -51,7 +50,7 @@ impl<T> RestrictedDyn<T> {
             data: data,
             check: Box::new(check),
             sanitizer: Box::new(|inv| panic!("Invalid assignment to variable of type Restricted")),
-        }.make_valid() // <= executes panic, if data is invalid
+        }.into_valid() // <= executes panic, if data is invalid
     }
 
     // what about into trait?
@@ -61,6 +60,13 @@ impl<T> RestrictedDyn<T> {
 
     pub fn into_checks(self) -> (Box<Fn(&T) -> bool>, Box<Fn(&mut T)>) {
         (self.check, self.sanitizer)
+    }
+
+    /// Sanitizes saved data after unsafe access.
+    pub fn make_valid(&mut self) {
+        while self.is_invalid() {
+            (self.sanitizer)(&mut self.data)
+        }
     }
 
     /// Changes the validity check. If the current data is invalid under the
@@ -97,8 +103,8 @@ impl<T> RestrictedDyn<T> {
         self.sanitizer = Box::new(sanitizer);
     }
 
-    fn make_valid(mut self) -> Self {
-        while !self.is_valid() {
+    fn into_valid(mut self) -> Self {
+        while self.is_invalid() {
             (self.sanitizer)(&mut self.data);
         }
         self
@@ -107,25 +113,25 @@ impl<T> RestrictedDyn<T> {
     pub fn add<U>(mut self, rhs: U) -> Self
         where T: Add<U, Output=T> {
         self.data = self.data + rhs;
-        self.make_valid()
+        self.into_valid()
     }
 
     pub fn bitand<U>(mut self, rhs: U) -> Self
         where T: BitAnd<U, Output=T> {
         self.data = self.data & rhs;
-        self.make_valid()
+        self.into_valid()
     }
 
     pub fn bitor<U>(mut self, rhs: U) -> Self
         where T: BitOr<U, Output=T> {
         self.data = self.data | rhs;
-        self.make_valid()
+        self.into_valid()
     }
 
     pub fn bitxor<U>(mut self, rhs: U) -> Self
         where T: BitXor<U, Output=T> {
         self.data = self.data ^ rhs;
-        self.make_valid()
+        self.into_valid()
     }
 
     // Deref => actual trait (Restricted extends Deref)
@@ -140,7 +146,7 @@ impl<T> RestrictedDyn<T> {
     pub fn div<U>(mut self, rhs: U) -> Self
         where T: Div<U, Output=T> {
         self.data = self.data / rhs;
-        self.make_valid()
+        self.into_valid()
     }
 
     // Drop
@@ -158,7 +164,7 @@ impl<T> RestrictedDyn<T> {
     pub fn mul<U>(mut self, rhs: U) -> Self
         where T: Mul<U, Output=T> {
         self.data = self.data * rhs;
-        self.make_valid()
+        self.into_valid()
     }
 
     // Neg => actual trait
@@ -170,13 +176,13 @@ impl<T> RestrictedDyn<T> {
     pub fn sub<U>(mut self, rhs: U) -> Self
         where T: Sub<U, Output=T> {
         self.data = self.data - rhs;
-        self.make_valid()
+        self.into_valid()
     }
 }
 
 
 /*
- *  Implementing std::ops Traits
+ *  std::ops Traits
  */
 
 /* not possible to implement unsafely
@@ -201,7 +207,7 @@ impl<T> Neg for RestrictedDyn<T>
     type Output = RestrictedDyn<T>;
     fn neg(mut self) -> Self {
         self.data = -self.data;
-        self.make_valid()
+        self.into_valid()
     }
 }
 
@@ -210,7 +216,7 @@ impl<T> Not for RestrictedDyn<T>
     type Output = RestrictedDyn<T>;
     fn not(mut self) -> Self {
         self.data = !self.data;
-        self.make_valid()
+        self.into_valid()
     }
 }
 
@@ -219,7 +225,7 @@ impl<T,U> Rem<U> for RestrictedDyn<T>
     type Output = RestrictedDyn<T>;
     fn rem(mut self, rhs: U) -> Self {
         self.data = self.data % rhs;
-        self.make_valid()
+        self.into_valid()
     }
 }
 
@@ -228,7 +234,7 @@ impl<T,U> Shl<U> for RestrictedDyn<T>
     type Output = RestrictedDyn<T>;
     fn shl(mut self, rhs: U) -> Self {
         self.data = self.data << rhs;
-        self.make_valid()
+        self.into_valid()
     }
 }
 
@@ -237,7 +243,7 @@ impl<T,U> Shr<U> for RestrictedDyn<T>
     type Output = RestrictedDyn<T>;
     fn shr(mut self, rhs: U) -> Self {
         self.data = self.data >> rhs;
-        self.make_valid()
+        self.into_valid()
     }
 }
 

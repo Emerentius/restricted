@@ -1,8 +1,9 @@
-//! This crate defines the RestrictedDyn type, which can wrap a variable of arbitrary type and store a validity check and a sanitizer with it. When the data is modified and falls outside the allowed ranges as given by the check, it will be brought back in by the sanitizer. The sanitizer will be applied repeatedly if it does not mutate the value sufficiently on the first time.
+//! This crate defines the RestrictedDyn type, which can wrap a variable of arbitrary type and store a validity check and a sanitizer with it. The idea is to be able to express restrictions that don't fit in the type system via dynamically dispatched checks that travel with the data, allowing one to forego manual checks along the way. Should these restrictions change at some point, the functions can be redefined.
 //!
-//! The idea is to be able to forego manual checks when mutating a value and still be able to trust that it falls within the boundaries set at the beginning. Should these boundaries change at some point, the functions can be redefined.
+//! When the data is modified and falls outside the allowed ranges as given by the check, it will be brought back in by the sanitizer. It will be applied repeatedly if it does not mutate the value sufficiently on the first run. This can result in an infinite loop, if the sanitizer is not carefully created.
 //!
-//! Ergonomics are subpar and it doesn't play very well with collections as data, if the entries are to be restricted. There are either a lot duplicated functions or very inefficient writing.
+//! Most operators are overloaded, so long as the operators work only on one variable or are distinctly asymmetric (like %, <<) with the restricted variable being on the left side. Typically symmetric operations are defined as methods.
+//! Ergonomics are subpar and it doesn't play very well with big data structures, if the entries are to be restricted in a similar fashion. There are either a lot duplicated functions or very inefficient checks and sanitizing.
 //!
 //! ```
 //! extern crate restricted_types;
